@@ -1,0 +1,499 @@
+Superheroes-backend/
+├── db/migrations
+├    └── create_inital_tables.js
+├── models/
+
+├── src/
+│   ├── controllers/      # Lógica de los endpoints (Auth, Héroes, Users)
+│   ├── middlewares/      # Protección de rutas (verificar token)
+│   ├── models/             #objetos de datos de las tablas a usar
+│   │	├──  catsuperheroe.ts
+├   │	├──  Favorite.ts
+├   │	└──  User.ts
+│   ├── routes/           # Definición de rutas (URL endpoints)
+│   ├── database.ts     #Configuración de librería Knex para conectarse a postgresql
+│   └── index.ts          # Punto de entrada del servidor
+│
+├── .env                  # Variables de entorno (DB URL, JWT Secret)
+├── package.json
+├──          # Esquema de la base de datos
+└── tsconfig.json
+
+Librerias y paquetes que vamos a usar en el proyecto:
+Necesitarás ejecutar esto en tu terminal(cmd o powershell):
+npm init -y  <-- Este comando genera el proyecto inicial, correrlo dentro de la ruta donde deceamos 			crear el proyecto
+npm install express cors dotenv  knex objection pg bcryptjs jsonwebtoken
+npm install -D typescript ts-node @types/node @types/express @types/cors @types/bcryptjs 			@types/jsonwebtoken @types/knex
+npm install --save-dev tsx
+npx tsc --init
+
+
+Usaremos Knex como metodo para el manejo de consultas a postgresql y metodos de consulta a las tablas.
+•	Knex.js es un constructor de consultas (Query Builder) que te permite escribir SQL de manera programática con JavaScript/TypeScript, evitando los problemas de configuración de un ORM completo como Prisma o Sequelize.
+•	Objection.js se construye sobre Knex y añade la funcionalidad de Modelos (la parte más sencilla de un ORM), haciéndolo muy intuitivo.
+
+
+
+
+
+
+
+
+
+
+
+Al final del proyecto la ramificación debe quedar así:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Agregar archivo “.env” variables de entorno
+# Asegúrate de usar DATABASE_URL, NO localhost solo.
+# Ejemplo: postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
+DATABASE_URL="postgresql://e106usera:123456789@localhost:5432/superheroedb"
+JWT_SECRET="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzY1NDMyNzQ3LCJleHAiOjE3NjU0MzYzNDd9.i_mTht0EPrU3E0_PG20emioRl2rPssbRxfS3O-hu5C8"
+
+# Configuracion de Base de Datos
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=""
+DB_PASSWORD="123456789"
+DB_NAME="superheroedb"
+PORT=3000
+
+
+
+Modificar este documento del proyecto: “package.json”
+agregar los renglones en donde dice “Script”: {…
+"start": "tsx --env-file=.env src/index.ts" ,  esto al momento de ejecutar el comando npm start desde CMD, ejecuta esta parte del proyecto que es el punto de inicio. A continuación se agrega todo el contenido del documento a como debe de quedar.
+
+{
+  "name": "superheroeback",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.ts",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "start": "tsx --env-file=.env src/index.ts",
+    "seed": "tsx ./node_modules/knex/bin/cli.js seed:run --knexfile knexfile.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.1.0",
+    "objection": "^3.1.5",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^24.10.2",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.9.3"
+  }
+}
+
+
+
+
+
+
+
+Modificar el archivo de configuración de typescript en el proyecto: “tsconfig.json”, asi debe quedar al final.
+
+{
+  // Visit https://aka.ms/tsconfig to read more about this file
+  "compilerOptions": {
+    // File Layout
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strictPropertyInitialization": false,
+    "module": "commonjs",
+    "target": "es2022",
+    "types": [],
+    // For nodejs:
+    // "lib": ["esnext"],
+    // "types": ["node"],
+    // and npm install -D @types/node
+
+    // Stricter Typechecking Options
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    // Recommended Options
+    "strict": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+  },
+   "exclude": [
+        "node_modules"
+    ],
+    "include": [
+        "src/**/*.ts"
+    ]
+}
+
+
+
+
+
+
+2. Configuración de la Base de Datos (knex)
+Este es el paso más importante. Aquí definimos la tabla catsuperheroe y la tabla users  y creamos la relación para los "favoritos".
+
+Estructura y configuración para agregar conexión a postgresql y el uso de tablas y sus metodos:
+A)  Crear Arachivo de configuración de Knox
+Crea un archivo llamado knexfile.js en la raíz de tu proyecto. Este archivo le dice a Knex cómo conectarse a la base de datos.
+// knexfile.js
+import type { Knex } from 'knex';
+
+// Configuración base de Knex
+const config: { [key: string]: Knex.Config } = {
+  // =======================================================
+  // Ambiente de Desarrollo (npm run migrate, npm run seed)
+  // =======================================================
+  development: {
+    client: 'pg', // O 'mysql', 'mssql', 'sqlite3', etc.
+    connection: {
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      user: process.env.DB_USER || 'e106usera',
+      password: process.env.DB_PASSWORD || '123456789',
+      database: process.env.DB_NAME || 'superheroedb',
+    },
+    // Directorios donde Knex buscará archivos
+    migrations: {
+      directory: './db/migrations', // Archivos para crear tablas (e.g., users, catsuperheroe)
+      tableName: 'knex_migrations',  // Tabla para rastrear migraciones
+      extension: 'ts' // Asume que tus migraciones son archivos .ts
+    },
+    seeds: {
+      directory: './db/seeds', // Archivos para poblar datos iniciales (e.g., superHeroesData)
+      extension: 'ts' // Asume que tus seeders son archivos .ts
+    },
+    // Desactivar transacciones en modo de desarrollo si no son necesarias
+    pool: {
+      min: 2,
+      max: 10
+    }
+  },
+
+  // =======================================================
+  // Ambiente de Producción (Usar URLs de conexión más seguras)
+  // =======================================================
+  production: {
+    client: 'pg',
+    connection: process.env.DATABASE_URL as string, // Usar una URL completa de conexión (más seguro en Prod)
+    pool: {
+      min: 2,
+      max: 10
+    },
+    migrations: {
+      directory: './db/migrations',
+      tableName: 'knex_migrations',
+      extension: 'ts'
+    },
+    seeds: {
+      directory: './db/seeds',
+      extension: 'ts'
+    }
+  }
+};
+
+export default config;
+
+
+
+Archivo .env
+Crea un archivo .env en la raíz de tu proyecto para almacenar las credenciales que usa el knexfile.ts:
+# Asegúrate de usar DATABASE_URL, NO localhost solo.
+# Ejemplo: postgresql://USER:PASSWORD@HOST:PORT/DB_NAME
+DATABASE_URL="postgresql://e106usera:123456789@localhost:5432/superheroedb"
+JWT_SECRET="Agregar_aqui_un_Token"
+# O usar este token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzY1NDMyNzQ3LCJleHAiOjE3NjU0MzYzNDd9.i_mTht0EPrU3E0_PG20emioRl2rPssbRxfS3O-hu5C8"
+
+
+# Configuracion de Base de Datos
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER="e106usera"
+DB_PASSWORD="123456789"
+DB_NAME="superheroedb"
+PORT=3000
+
+
+B).- Inicialización de la Base de Datos (src/database.ts)
+Crea un nuevo archivo para inicializar la conexión, que luego usarás en todos tus modelos:
+// src/database.ts
+
+import knex from 'knex';
+// Importamos el archivo de configuración completo
+import knexConfig from '../knexfile';
+import { Knex } from 'knex';
+
+// 1. Determinar el entorno
+const environment = process.env.NODE_ENV || 'development';
+
+// 2. Obtener la configuración específica para ese entorno
+const config: Knex.Config | undefined = knexConfig[environment];
+
+// 3. Verificar que la configuración exista y lanzar un error si no es así
+if (!config) {
+    throw new Error(`¡Error! La configuración de Knex para el entorno '${environment}' no fue encontrada en knexfile.ts.`);
+}
+
+// 4. Inicializar y exportar la instancia de Knex
+// Aquí, TypeScript ya sabe que 'config' es de tipo Knex.Config y no undefined.
+export default knex(config);
+
+// 4. Inicializar y exportar la instancia de Knex
+// Aquí, TypeScript ya sabe que 'config' es de tipo Knex.Config y no undefined.
+export default knex(config);
+
+hasta este punto, el arbol de paquetes se debe de ver asi:
+├── .env
+├── knexfile.ts
+├── src/
+│ 	├── database.ts <-- (Archivo de conexión)
+│         └── ... tus controladoras
+├── migrations/
+│         └── create_initial_tables.ts
+└── seeds/
+            └── 01_superheroes_seed.ts <-- (El archivo que generamos)
+
+
+C).- Crear el Modelo de Superhéroe (src/models/CatSuperheroe.ts)
+// src/models/CatSuperheroe.ts
+
+import { Model } from 'objection';
+
+export class CatSuperheroe extends Model {
+    id!: number;
+    nombre!: string;
+    poder!: string;
+    fortaleza!: string;
+    resistencia!: string;
+    debilidad!: string;
+    imagen_url!: string;
+
+    // Define el nombre de la tabla
+    static get tableName() {
+        return 'catsuperheroe';
+    }
+
+    // Define las columnas para validación (opcional, pero útil)
+    static get jsonSchema() {
+        return {
+            type: 'object',
+            required: ['nombre', 'poder', 'imagen_url'],
+            properties: {
+                id: { type: 'integer' },
+                nombre: { type: 'string', minLength: 1, maxLength: 255 },
+                // ... otras propiedades
+            }
+        };
+    }
+}
+
+
+
+D).- Migración (Crear Tablas con Código)
+1.- Crea la estructura de carpetas: mkdir db/migrations (Esto en la carpeta raiz donde tienen el proyecto).
+2.- Crea un archivo de migración: npx knex migrate:make create_initial_tables
+ (Esto creará un archivo con timestamp en db/migrations).
+3.- Edita el archivo que se creo en migración y remplazar por esto:
+
+
+// db/migrations/create_initial_tables.ts
+
+import { Knex } from 'knex';
+
+// 1. Crear la función 'up' con los tipos correctos
+export async function up(knex: Knex): Promise<void> {
+
+    await knex.schema.dropTableIfExists('favorites');
+    await knex.schema.dropTableIfExists('catsuperheroe');
+    await knex.schema.dropTableIfExists('users');
+   
+    await knex.schema
+      .createTable('users', (table: Knex.TableBuilder) => {
+        table.increments('id').primary();
+        table.string('nombre', 100).notNullable();
+        table.string('email', 100).notNullable().unique();
+        table.string('password', 255).notNullable();
+        table.string('role', 50).defaultTo('user');
+      })
+     
+    await knex.schema
+      .createTable('catsuperheroe', (table: Knex.TableBuilder) => {
+        table.increments('id').primary();
+        table.string('nombre', 100).notNullable().unique();
+        table.string('poder', 255).notNullable();
+        table.string('fortaleza', 255);
+        table.string('resistencia', 255);
+        table.string('debilidad', 255);
+        table.string('imagen_url', 255).notNullable();
+        table.timestamp('created_at').defaultTo(knex.fn.now());
+      })
+     
+    await knex.schema
+      .createTable('favorites', (table: Knex.TableBuilder) => {
+        // Asegúrate de usar los nombres de columnas correctos para las FKs
+        table.integer('user_id').unsigned().notNullable().references('id').inTable('users').onDelete('CASCADE');
+        table.integer('superheroe_id').unsigned().notNullable().references('id').inTable('catsuperheroe').onDelete('CASCADE');
+        // Clave primaria compuesta para asegurar que un héroe solo sea favorito una vez por usuario
+        table.primary(['user_id', 'superheroe_id']);
+      });
+}
+
+// 2. Crear la función 'down' con los tipos correctos
+export async function down(knex: Knex): Promise<void> {
+    // Es buena práctica eliminar las tablas en orden inverso para manejar las FKs
+    await knex.schema.dropTable('favorites');
+    await knex.schema.dropTable('catsuperheroe');
+    await knex.schema.dropTable('users');
+}
+
+E).- Ejecuta la migración:
+npx knex migrate:latest
+
+F) .- Agregar datos a tabla catsuperheroe.
+	F.1 - Agregar carpetas en “db/seeds”
+	F.2 – crear Archivo : 01_superheroes.ts.
+	Quedaria de la sigueinte manera:
+
+
+
+
+
+
+
+
+
+
+
+
+
+      F.3.- Modificar archivo 01_superheroe.ts y agregar el siguiente codigo:
+// seeds/01_superheroes.ts (o la ruta que uses para tus seeds de Knex)
+
+import { Knex } from 'knex';
+
+// ----------------------------------------------------
+// 1. Datos de Semilla (La lista de Superhéroes)
+// ----------------------------------------------------
+
+const superHeroesData = [
+    {
+        nombre: 'Superman',
+        poder: 'Vuelo, Súper Fuerza, Visión de calor',
+        fortaleza: 'Sol Amarillo',
+        resistencia: 'Extremadamente alta',
+        debilidad: 'Kryptonita',
+        imagen_url: 'Superman.png'
+    },
+    {
+        nombre: 'Wonder Woman',
+        poder: 'Fuerza sobrehumana, Vuelo, Lazo de la Verdad',
+        fortaleza: 'Su voluntad y su entrenamiento',
+        resistencia: 'Muy alta',
+        debilidad: 'Armas punzantes (anteriormente)',
+        imagen_url: 'Wonder-Woman.png'
+    },
+    {
+        nombre: 'Batman',
+        poder: 'Intelecto de genio, Maestría en combate',
+        fortaleza: 'Su preparación y gadgets',
+        resistencia: 'Humana máxima',
+        debilidad: 'Mortalidad y traumas',
+        imagen_url: 'Batman.png'
+    },
+    {
+        nombre: 'Flash (Barry Allen)',
+        poder: 'Súper Velocidad, Capacidad de vibrar a través de la materia',
+        fortaleza: 'La Speed Force',
+        resistencia: 'Acelerada',
+        debilidad: 'Frío extremo',
+        imagen_url: 'Flash.png'
+    },
+    {
+        nombre: 'Spider-Man (Peter Parker)',
+        poder: 'Fuerza y agilidad proporcionales a una araña, Sentido arácnido',
+        fortaleza: 'Su sentido arácnido y lanzaredes',
+        resistencia: 'Alta',
+        debilidad: 'Ciertos sonidos de alta frecuencia',
+        imagen_url: 'Spider-Man.png'
+    },
+    {
+        nombre: 'Iron Man (Tony Stark)',
+        poder: 'Genio multimillonario, Armadura avanzada',
+        fortaleza: 'Su inteligencia y recursos',
+        resistencia: 'La de su armadura',
+        debilidad: 'Su ego y dependencia de la armadura',
+        imagen_url: 'Ironman.png'
+    },
+
+    // Puedes añadir más héroes aquí...
+];
+
+// ----------------------------------------------------
+// 2. Funciones de Knex para Seed
+// ----------------------------------------------------
+
+/**
+ * Función que inserta los datos. Es requerida por Knex.
+ * @param knex Instancia de Knex
+ */
+export async function seed(knex: Knex): Promise<void> {
+    const TABLE_NAME = 'catsuperheroe';
+
+    // Borra *TODOS* los registros existentes de la tabla antes de insertar
+    await knex(TABLE_NAME).del();
+
+    // Inserta los nuevos datos
+    await knex(TABLE_NAME).insert(superHeroesData);
+   
+    console.log(` ${superHeroesData.length} Superhéroes insertados en la tabla '${TABLE_NAME}'.`);
+}
+
+G).- Ejecutar Seeds para poblar catalogo(catsuperheroe)
+npm run:seed
+********  Aqui termina la  configuración de knox ***
+
