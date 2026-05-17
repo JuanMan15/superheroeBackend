@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import jwt from "jsonwebtoken";
 import {
   createHero,
   deleteHero,
@@ -6,6 +7,51 @@ import {
   getHeroById,
   updateHero,
 } from "../models/CatSuperheroe";
+import { listFavoritesByUser } from "../models/Favorite";
+
+const extractUserId = (req: Request): number | null => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return null;
+  const token = authHeader.split(" ")[1];
+  if (!token) return null;
+  const jwtSecret = process.env.JWT_SECRET;
+  if (!jwtSecret) return null;
+  try {
+    const decoded = jwt.verify(token, jwtSecret) as { id: number };
+    return decoded.id ?? null;
+  } catch {
+    return null;
+  }
+};
+
+export const catalogController = async (req: Request, res: Response) => {
+  try {
+    const heroes = await getAllHeroes();
+    const userId = extractUserId(req);
+
+    let favoriteIds: Set<number> = new Set();
+    if (userId) {
+      const favorites = await listFavoritesByUser(userId);
+      favoriteIds = new Set(favorites.map((f) => f.hero_id));
+    }
+
+    const mapped = heroes.map((h) => ({
+      id: h.id,
+      nombre: h.nombre_heroe,
+      poder: h.poder_principal,
+      fortaleza: h.fortaleza,
+      resistencia: h.resistencia,
+      debilidad: h.debilidad,
+      imagen_url: h.imagen_url,
+      esFavorito: favoriteIds.has(h.id),
+    }));
+    return res.json(mapped);
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ mensaje: "Error al listar catalogo", detalle: String(error) });
+  }
+};
 
 export const listHeroes = async (_req: Request, res: Response) => {
   try {
@@ -42,23 +88,28 @@ export const createHeroController = async (req: Request, res: Response) => {
       nombre_real,
       universo,
       poder_principal,
+      nombre,
+      poder,
       fortaleza,
       resistencia,
       debilidad,
       imagen_url,
     } = req.body;
 
-    if (!nombre_heroe || !nombre_real || !universo || !poder_principal) {
+    const heroName = nombre_heroe || nombre;
+    const power = poder_principal || poder;
+
+    if (!heroName || !power) {
       return res
         .status(400)
-        .json({ mensaje: "Todos los campos del heroe son requeridos" });
+        .json({ mensaje: "nombre y poder son requeridos" });
     }
 
     const id = await createHero({
-      nombre_heroe,
-      nombre_real,
-      universo,
-      poder_principal,
+      nombre_heroe: heroName,
+      nombre_real: nombre_real || heroName,
+      universo: universo || "General",
+      poder_principal: power,
       fortaleza,
       resistencia,
       debilidad,

@@ -22,10 +22,10 @@ app.get("/saludo", (req, res) => {
   res.json({ mensaje: `Hola, ${nombre}! Tienes ${edad} años.` });
 });
 
-app.use("/auth", authRoutes);
-app.use("/heroes", heroRoutes);
-app.use("/favorites", favoriteRoutes);
-app.use("/users", userRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/heroes", heroRoutes);
+app.use("/api/favorites", favoriteRoutes);
+app.use("/api/users", userRoutes);
 
 const port = Number(process.env.PORT || 3000);
 

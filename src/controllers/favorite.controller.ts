@@ -14,7 +14,17 @@ export const listMyFavorites = async (req: RequestWithUser, res: Response) => {
     }
 
     const favorites = await listFavoriteHeroesByUser(req.user.id);
-    return res.json(favorites);
+    const mapped = favorites.map((f) => ({
+      id: f.hero_id,
+      nombre: f.nombre_heroe,
+      poder: f.poder_principal,
+      fortaleza: f.fortaleza,
+      resistencia: f.resistencia,
+      debilidad: f.debilidad,
+      imagen_url: f.imagen_url,
+      esFavorito: true,
+    }));
+    return res.json(mapped);
   } catch (error) {
     return res
       .status(500)
@@ -31,7 +41,7 @@ export const addFavoriteController = async (
       return res.status(401).json({ mensaje: "No autenticado" });
     }
 
-    const heroId = Number(req.params.heroId);
+    const heroId = Number(req.params.heroId ?? req.body.heroId ?? req.body.heroeId);
 
     if (!Number.isInteger(heroId) || heroId <= 0) {
       return res.status(400).json({ mensaje: "heroId invalido" });
@@ -67,7 +77,7 @@ export const removeFavoriteController = async (
       return res.status(401).json({ mensaje: "No autenticado" });
     }
 
-    const heroId = Number(req.params.heroId);
+    const heroId = Number(req.params.heroId ?? req.params.heroeId);
 
     if (!Number.isInteger(heroId) || heroId <= 0) {
       return res.status(400).json({ mensaje: "heroId invalido" });
