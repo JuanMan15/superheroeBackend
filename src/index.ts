@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import authRoutes from "./routes/auth.routes";
+import exportRoutes from "./routes/export.routes";
 import favoriteRoutes from "./routes/favorite.routes";
 import heroRoutes from "./routes/hero.routes";
 import userRoutes from "./routes/user.routes";
@@ -24,6 +25,7 @@ app.get("/saludo", (req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/heroes", heroRoutes);
+app.use("/api/heroes/export", exportRoutes);
 app.use("/api/favorites", favoriteRoutes);
 app.use("/api/users", userRoutes);
 
